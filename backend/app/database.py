@@ -1,3 +1,5 @@
+import shutil
+from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
@@ -26,6 +28,20 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def backup_database(keep: int = 20) -> Path | None:
+    db_path = DATA_DIR / "gallery.db"
+    if not db_path.exists():
+        return None
+    backup_dir = DATA_DIR / "backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    target = backup_dir / f"gallery-{datetime.now().strftime('%Y%m%d-%H%M%S')}.db"
+    shutil.copy2(db_path, target)
+    backups = sorted(backup_dir.glob("gallery-*.db"))
+    for stale in backups[:-keep]:
+        stale.unlink(missing_ok=True)
+    return target
 
 
 def run_migrations() -> None:
@@ -65,3 +81,11 @@ def run_migrations() -> None:
             for column, statement in category_statements.items():
                 if column not in category_columns:
                     connection.execute(text(statement))
+
+    if "site_config" in inspector.get_table_names():
+        config_columns = {column["name"] for column in inspector.get_columns("site_config")}
+        if "announcement_mode" not in config_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE site_config ADD COLUMN announcement_mode VARCHAR(16) DEFAULT 'topbar'")
+                )

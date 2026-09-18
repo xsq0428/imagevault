@@ -1,7 +1,19 @@
 const BASE = '/api'
 
+let unauthorizedHandler = null
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = handler
+}
+
 async function request(url, options = {}) {
-  const response = await fetch(`${BASE}${url}`, options)
+  const response = await fetch(`${BASE}${url}`, {
+    credentials: 'same-origin',
+    ...options
+  })
+  if (response.status === 401 && url !== '/admin/me') {
+    if (unauthorizedHandler) unauthorizedHandler()
+  }
   if (!response.ok) {
     let detail = `请求失败 (${response.status})`
     try {
@@ -10,7 +22,9 @@ async function request(url, options = {}) {
     } catch {
       /* keep default message */
     }
-    throw new Error(detail)
+    const error = new Error(detail)
+    error.status = response.status
+    throw error
   }
   if (response.status === 204) return null
   return response.json()
@@ -216,3 +230,58 @@ export const originalUrl = (id) => `${BASE}/media/original/${id}`
 export const thumbUrl = (id) => `${BASE}/media/thumb/${id}`
 export const bannerUrl = (id) => `${BASE}/media/banner/${id}`
 export const bannerThumbUrl = (id) => `${BASE}/media/banner-thumb/${id}`
+
+export const captchaUrl = () => `${BASE}/admin/captcha?t=${Date.now()}`
+
+export function fetchMe() {
+  return request('/admin/me')
+}
+
+export function login(payload) {
+  return request('/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+}
+
+export function logout() {
+  return request('/admin/logout', { method: 'POST' })
+}
+
+export function updateAccount(payload) {
+  return request('/admin/account', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+}
+
+export function fetchSiteConfig() {
+  return request('/site-config')
+}
+
+export function fetchAdminSiteConfig() {
+  return request('/admin/site-config')
+}
+
+export function updateSiteConfig(payload) {
+  return request('/admin/site-config', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+}
+
+export function uploadLogo(file) {
+  const form = new FormData()
+  form.append('file', file)
+  return request('/admin/site-config/logo', { method: 'POST', body: form })
+}
+
+export function deleteLogo() {
+  return request('/admin/site-config/logo', { method: 'DELETE' })
+}
+
+export const logoUrl = () => `${BASE}/media/logo`
+export const logoThumbUrl = () => `${BASE}/media/logo-thumb`

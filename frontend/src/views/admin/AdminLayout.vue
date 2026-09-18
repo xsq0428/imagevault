@@ -1,6 +1,10 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { fetchStats } from '../../api'
+import { useRouter } from 'vue-router'
+import { fetchStats, logoUrl } from '../../api'
+import { auth, loadSiteConfig, signOut, site } from '../../store'
+
+const router = useRouter()
 
 const collapsed = ref(typeof window !== 'undefined' && window.innerWidth <= 720)
 const trashCount = ref(0)
@@ -11,10 +15,13 @@ const menu = [
   { to: '/admin/categories', label: '分类管理', icon: 'folder' },
   { to: '/admin/upload', label: '素材上传', icon: 'upload' },
   { to: '/admin/assets', label: '素材管理', icon: 'image' },
-  { to: '/admin/trash', label: '回收站', icon: 'trash', badge: true }
+  { to: '/admin/trash', label: '回收站', icon: 'trash', badge: true },
+  { to: '/admin/site', label: '站点配置', icon: 'settings' }
 ]
 
-const pageTitle = computed(() => '素材上传后台')
+const pageTitle = computed(() =>
+  site.site_name ? `${site.site_name} 后台` : '素材上传后台'
+)
 
 async function loadBadge() {
   try {
@@ -25,7 +32,16 @@ async function loadBadge() {
   }
 }
 
-onMounted(loadBadge)
+async function handleLogout() {
+  if (!window.confirm('确定退出登录？')) return
+  await signOut()
+  router.push({ name: 'admin-login' })
+}
+
+onMounted(() => {
+  loadBadge()
+  loadSiteConfig()
+})
 </script>
 
 <template>
@@ -33,14 +49,15 @@ onMounted(loadBadge)
     <aside class="admin-sidebar" :class="{ collapsed }">
       <div class="admin-brand">
         <span class="brand-mark">
-          <svg viewBox="0 0 24 24" width="18" height="18">
+          <img v-if="site.has_logo" :src="logoUrl()" alt="logo" />
+          <svg v-else viewBox="0 0 24 24" width="18" height="18">
             <rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" />
             <rect x="13" y="3" width="8" height="8" rx="2" fill="currentColor" />
             <rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor" />
             <rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor" />
           </svg>
         </span>
-        <span v-show="!collapsed" class="brand-text">素材上传后台</span>
+        <span v-show="!collapsed" class="brand-text">{{ site.site_name }} 后台</span>
       </div>
 
       <nav class="admin-menu">
@@ -71,6 +88,10 @@ onMounted(loadBadge)
             <circle cx="9" cy="10" r="1.8" fill="currentColor" />
             <path d="M5 18l4.5-5 3.5 3.5L16 13l3 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
           </svg>
+          <svg v-else-if="item.icon === 'settings'" viewBox="0 0 24 24" width="18" height="18">
+            <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7" />
+            <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          </svg>
           <svg v-else viewBox="0 0 24 24" width="18" height="18">
             <path d="M5 7h14M9 7V5h6v2M6 7l1 13h10l1-13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
@@ -90,6 +111,13 @@ onMounted(loadBadge)
           </svg>
           <span v-show="!collapsed" class="menu-label">返回图库</span>
         </router-link>
+        <button class="menu-item logout-item" title="退出登录" @click="handleLogout">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M10 8l-4 4 4 4M6 12h9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span v-show="!collapsed" class="menu-label">退出登录</span>
+        </button>
       </div>
     </aside>
 
@@ -107,6 +135,7 @@ onMounted(loadBadge)
           <div class="admin-subtitle">图片分类、上传与素材管理</div>
         </div>
         <div class="topbar-spacer"></div>
+        <span v-if="auth.user" class="admin-user">{{ auth.user.username }}</span>
         <router-link class="icon-link" to="/">查看前台图库 →</router-link>
       </header>
 
@@ -120,5 +149,23 @@ onMounted(loadBadge)
 <style scoped>
 .icon-link:hover {
   text-decoration: underline;
+}
+
+.admin-user {
+  margin-right: 14px;
+  font-size: 13px;
+  color: var(--ink-500);
+}
+
+.logout-item {
+  width: 100%;
+  text-align: left;
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 </style>

@@ -7,8 +7,7 @@ import GalleryGrid from '../components/GalleryGrid.vue'
 import Pagination from '../components/Pagination.vue'
 import Lightbox from '../components/Lightbox.vue'
 import { fetchCategories, fetchFeed } from '../api'
-
-const PAGE_SIZE = 10
+import { loadSiteConfig, site } from '../store'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,6 +21,8 @@ const activeCategory = ref(null)
 const loading = ref(false)
 const toast = ref('')
 const lightboxIndex = ref(-1)
+
+const pageSize = computed(() => site.page_size || 10)
 
 const imageItems = computed(() => items.value.filter((item) => item.item_type === 'image'))
 const lightboxImages = computed(() => imageItems.value.map((item) => item.image))
@@ -53,7 +54,7 @@ async function load() {
         q: query.value,
         categoryId: activeCategory.value,
         page: page.value,
-        limit: PAGE_SIZE
+        limit: pageSize.value
       }),
       fetchCategories()
     ])
@@ -111,9 +112,10 @@ watch(
   }
 )
 
-onMounted(() => {
+onMounted(async () => {
   activeCategory.value = parseCategory(route.query.category)
   query.value = typeof route.query.q === 'string' ? route.query.q : ''
+  await loadSiteConfig()
   load()
 })
 </script>

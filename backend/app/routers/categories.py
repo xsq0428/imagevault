@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import image_store
+from ..auth import require_admin
 from ..database import get_db
 from ..models import Category, Image, ImageSet
 from ..schemas import CategoryIn, CategoryOut
@@ -70,7 +71,12 @@ def list_categories(db: Session = Depends(get_db)) -> list[CategoryOut]:
     return [serialize(db, category) for category in categories]
 
 
-@router.post("", response_model=CategoryOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=CategoryOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_admin)],
+)
 def create_category(payload: CategoryIn, db: Session = Depends(get_db)) -> CategoryOut:
     name = payload.name.strip()
     if db.scalar(select(Category).where(Category.name == name)):
@@ -87,7 +93,9 @@ def create_category(payload: CategoryIn, db: Session = Depends(get_db)) -> Categ
     return serialize(db, category)
 
 
-@router.patch("/{category_id}", response_model=CategoryOut)
+@router.patch(
+    "/{category_id}", response_model=CategoryOut, dependencies=[Depends(require_admin)]
+)
 def update_category(
     category_id: int, payload: CategoryIn, db: Session = Depends(get_db)
 ) -> CategoryOut:
@@ -114,7 +122,11 @@ def update_category(
     return serialize(db, category)
 
 
-@router.post("/{category_id}/cover", response_model=CategoryOut)
+@router.post(
+    "/{category_id}/cover",
+    response_model=CategoryOut,
+    dependencies=[Depends(require_admin)],
+)
 def upload_cover(
     category_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)
 ) -> CategoryOut:
@@ -136,7 +148,11 @@ def upload_cover(
     return serialize(db, category)
 
 
-@router.delete("/{category_id}/cover", response_model=CategoryOut)
+@router.delete(
+    "/{category_id}/cover",
+    response_model=CategoryOut,
+    dependencies=[Depends(require_admin)],
+)
 def delete_cover(category_id: int, db: Session = Depends(get_db)) -> CategoryOut:
     category = db.get(Category, category_id)
     if category is None:
@@ -176,7 +192,7 @@ def category_cover_thumb(category_id: int, db: Session = Depends(get_db)) -> Fil
     return FileResponse(path, media_type="image/jpeg")
 
 
-@router.delete("/{category_id}")
+@router.delete("/{category_id}", dependencies=[Depends(require_admin)])
 def delete_category(category_id: int, db: Session = Depends(get_db)) -> dict:
     category = db.get(Category, category_id)
     if category is None:

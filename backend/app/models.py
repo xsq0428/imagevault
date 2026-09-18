@@ -124,6 +124,54 @@ class Image(Base):
         return self.deleted_at is not None
 
 
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class AdminSession(Base):
+    __tablename__ = "admin_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("admin_users.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+
+    user: Mapped[AdminUser] = relationship(lazy="joined")
+
+
+class SiteConfig(Base):
+    __tablename__ = "site_config"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    site_name: Mapped[str] = mapped_column(String(64), default="ImageVault")
+    site_tagline: Mapped[str] = mapped_column(String(128), default="图片素材库")
+    site_description: Mapped[str] = mapped_column(String(255), default="")
+    site_keywords: Mapped[str] = mapped_column(String(255), default="")
+    footer_text: Mapped[str] = mapped_column(String(255), default="")
+    icp_number: Mapped[str] = mapped_column(String(128), default="")
+    logo_stored_name: Mapped[str] = mapped_column(String(128), default="")
+    logo_content_type: Mapped[str] = mapped_column(String(64), default="")
+    logo_placeholder: Mapped[str] = mapped_column(Text, default="")
+    page_size: Mapped[int] = mapped_column(Integer, default=8)
+    announcement_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    announcement_mode: Mapped[str] = mapped_column(String(16), default="topbar")
+    announcement_text: Mapped[str] = mapped_column(String(500), default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 class Banner(Base):
     __tablename__ = "banners"
 

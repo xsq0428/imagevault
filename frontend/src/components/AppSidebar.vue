@@ -1,6 +1,10 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+
+import { logoUrl } from '../api'
+import { loadSiteConfig, site, notif, setNotifOpen } from '../store'
+import AnnouncementPanel from './AnnouncementPanel.vue'
 
 const route = useRoute()
 
@@ -8,21 +12,47 @@ const items = computed(() => [
   { to: '/', label: '首页', icon: 'home', active: route.path === '/' },
   { to: '/categories', label: '分类', icon: 'grid', active: route.path === '/categories' }
 ])
+
+const hasAnnouncement = computed(
+  () =>
+    site.loaded &&
+    site.announcement_enabled &&
+    site.announcement_mode === 'inbox' &&
+    !!site.announcement_text
+)
+
+onMounted(() => loadSiteConfig())
 </script>
 
 <template>
   <aside class="app-sidebar">
-    <router-link to="/" class="brand">
-      <span class="brand-mark">
+    <div class="sidebar-top">
+      <router-link to="/" class="brand">
+        <span class="brand-mark">
+          <img v-if="site.has_logo" :src="logoUrl()" alt="logo" />
+          <svg v-else viewBox="0 0 24 24" width="18" height="18">
+            <rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" />
+            <rect x="13" y="3" width="8" height="8" rx="2" fill="currentColor" />
+            <rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor" />
+            <rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor" />
+          </svg>
+        </span>
+        <span class="brand-text">{{ site.site_name }}</span>
+      </router-link>
+      <button
+        v-if="hasAnnouncement"
+        class="notif-btn"
+        title="查看公告"
+        :class="{ active: notif.open }"
+        @click="setNotifOpen(!notif.open)"
+      >
         <svg viewBox="0 0 24 24" width="18" height="18">
-          <rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor" />
-          <rect x="13" y="3" width="8" height="8" rx="2" fill="currentColor" />
-          <rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor" />
-          <rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor" />
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
         </svg>
-      </span>
-      <span class="brand-text">图库</span>
-    </router-link>
+        <span class="notif-dot"></span>
+      </button>
+    </div>
 
     <nav class="nav">
       <router-link
@@ -54,10 +84,51 @@ const items = computed(() => [
         <span>素材上传后台</span>
       </router-link>
     </div>
+
+    <AnnouncementPanel v-if="hasAnnouncement" />
   </aside>
 </template>
 
 <style scoped>
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  margin-bottom: 10px;
+  height: 46px;
+}
+
+.notif-btn {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-500);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notif-btn:hover,
+.notif-btn.active {
+  background: var(--mint-100);
+  color: var(--mint-600);
+}
+
+.notif-dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mint-500);
+}
+
 .app-sidebar {
   flex: 0 0 auto;
   width: 208px;
@@ -90,6 +161,13 @@ const items = computed(() => [
   place-items: center;
   background: var(--mint-500);
   color: #fff;
+  overflow: hidden;
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .brand-text {

@@ -152,3 +152,54 @@ class StatsOut(BaseModel):
     trash_count: int
     recent: list[ImageOut]
     category_usage: list[CategoryOut]
+
+
+class LoginIn(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=128)
+    captcha: str = Field(min_length=1, max_length=8)
+
+
+class AdminOut(BaseModel):
+    id: int
+    username: str
+
+
+class CaptchaOut(BaseModel):
+    image: str
+
+
+class AccountUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=64)
+    current_password: str | None = Field(default=None, max_length=128)
+    new_password: str | None = Field(default=None, min_length=6, max_length=128)
+
+
+class SiteConfigOut(BaseModel):
+    site_name: str
+    site_tagline: str
+    site_description: str
+    site_keywords: str
+    footer_text: str
+    icp_number: str
+    logo_placeholder: str = ""
+    has_logo: bool = False
+    page_size: int
+    announcement_enabled: bool
+    announcement_mode: str
+    announcement_text: str
+    updated_at: datetime
+
+
+class SiteConfigUpdate(BaseModel):
+    site_name: str | None = Field(default=None, min_length=1, max_length=64)
+    site_tagline: str | None = Field(default=None, max_length=128)
+    site_description: str | None = Field(default=None, max_length=255)
+    site_keywords: str | None = Field(default=None, max_length=255)
+    footer_text: str | None = Field(default=None, max_length=255)
+    icp_number: str | None = Field(default=None, max_length=128)
+    page_size: int | None = Field(default=None, ge=1, le=60)
+    announcement_enabled: bool | None = None
+    announcement_mode: str | None = None
+    announcement_text: str | None = Field(default=None, max_length=500)
+

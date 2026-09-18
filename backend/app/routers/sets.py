@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import image_store
+from ..auth import require_admin
 from ..common import resolve_tags
 from ..database import get_db
 from ..models import Category, Image, ImageSet, Tag
@@ -60,7 +61,12 @@ def list_sets(db: Session = Depends(get_db)) -> list[SetOut]:
     return [serialize(db, image_set) for image_set in sets]
 
 
-@router.post("", response_model=SetDetail, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=SetDetail,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_admin)],
+)
 def create_set(
     files: list[UploadFile] = File(...),
     title: str = Form(""),
@@ -104,7 +110,7 @@ def create_set(
     return serialize_detail(db, image_set)
 
 
-@router.get("/trash", response_model=list[SetOut])
+@router.get("/trash", response_model=list[SetOut], dependencies=[Depends(require_admin)])
 def list_trash_sets(db: Session = Depends(get_db)) -> list[SetOut]:
     sets = db.scalars(
         select(ImageSet)
@@ -122,7 +128,9 @@ def get_set(set_id: int, db: Session = Depends(get_db)) -> SetDetail:
     return serialize_detail(db, image_set)
 
 
-@router.patch("/{set_id}", response_model=SetDetail)
+@router.patch(
+    "/{set_id}", response_model=SetDetail, dependencies=[Depends(require_admin)]
+)
 def update_set(
     set_id: int, payload: SetUpdate, db: Session = Depends(get_db)
 ) -> SetDetail:
@@ -155,7 +163,7 @@ def update_set(
     return serialize_detail(db, image_set)
 
 
-@router.delete("/{set_id}")
+@router.delete("/{set_id}", dependencies=[Depends(require_admin)])
 def delete_set(set_id: int, db: Session = Depends(get_db)) -> dict:
     image_set = db.get(ImageSet, set_id)
     if image_set is None:
@@ -168,7 +176,9 @@ def delete_set(set_id: int, db: Session = Depends(get_db)) -> dict:
     return {"deleted": 1}
 
 
-@router.post("/{set_id}/restore", response_model=SetOut)
+@router.post(
+    "/{set_id}/restore", response_model=SetOut, dependencies=[Depends(require_admin)]
+)
 def restore_set(set_id: int, db: Session = Depends(get_db)) -> SetOut:
     image_set = db.get(ImageSet, set_id)
     if image_set is None:
@@ -182,7 +192,7 @@ def restore_set(set_id: int, db: Session = Depends(get_db)) -> SetOut:
     return serialize(db, image_set)
 
 
-@router.delete("/{set_id}/purge")
+@router.delete("/{set_id}/purge", dependencies=[Depends(require_admin)])
 def purge_set(set_id: int, db: Session = Depends(get_db)) -> dict:
     image_set = db.get(ImageSet, set_id)
     if image_set is None:

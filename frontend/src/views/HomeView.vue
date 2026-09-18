@@ -5,6 +5,7 @@ import FrontLayout from '../components/FrontLayout.vue'
 import BannerCarousel from '../components/BannerCarousel.vue'
 import SmartImage from '../components/SmartImage.vue'
 import { categoryCoverThumbUrl, fetchBanners, fetchCategories, thumbUrl } from '../api'
+import { loadSiteConfig, site } from '../store'
 
 const router = useRouter()
 
@@ -48,11 +49,25 @@ function coverSrc(category) {
   return ''
 }
 
-onMounted(load)
+onMounted(() => {
+  loadSiteConfig()
+  load()
+})
 </script>
 
 <template>
   <FrontLayout>
+    <div
+      v-if="site.announcement_enabled && site.announcement_mode === 'topbar' && site.announcement_text"
+      class="announcement"
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16">
+        <path d="M4 10v4h3l5 3V7l-5 3H4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+        <path d="M16 9.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+      </svg>
+      <span>{{ site.announcement_text }}</span>
+    </div>
+
     <BannerCarousel :banners="banners" @open="openBanner" />
 
     <section class="section">
@@ -95,6 +110,23 @@ onMounted(load)
 </template>
 
 <style scoped>
+.announcement {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 16px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--mint-100);
+  color: var(--mint-600);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.announcement svg {
+  flex: 0 0 auto;
+}
+
 .section {
   padding: 24px 16px 0;
 }

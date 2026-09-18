@@ -47,3 +47,32 @@ This file records user instructions, preferences, and teachings for reference in
   - 图片原图、缩略图与 SQLite 文件统一位于 `/workspace/backend/data/`
   - 前台路由为 `/`，后台入口为 `/admin/dashboard`
   - 数据库新增列通过 `app/database.py` 的 `run_migrations` 在启动时以 ALTER TABLE 补齐，不重建库
+
+[Project Knowledge Summary]
+- Date: 2026-09-18
+- Context: Discovered by Agent while merging frontend/backend ports and adding admin auth
+- Category: Operations & Deployment
+- Instructions:
+  - 生产模式只需启动 8000：FastAPI 挂载 `frontend/dist` 并做 SPA 回退，同时提供 `/api`；Nginx 只需反代到 8000，无需再起 5173
+  - 修改前端后必须先执行 `npm --prefix /workspace/frontend run build`，否则 8000 仍提供旧静态文件
+  - 登录入口 `/admin/login`，会话使用 HttpOnly Cookie；首次启动若无管理员会自动创建，密码可在「站点配置」页修改
+  - 忘记密码的处理：停止服务后清空 `admin_users` 表记录，重启会重新创建默认管理员
+  - 数字验证码答案保存在进程内存，必须单进程（单 worker）运行，多 worker 会导致验证码校验失败
+
+[User Instruction Summary]
+- Date: 2026-09-18
+- Context: User requested admin login feature and site configuration
+- Instructions:
+  - 前台（首页、分类、套图详情）保持公开访问，不添加登录页，也不做登录拦截
+  - 登录页仅属于后台，路由为 `/admin/login`，只保护 `/admin` 下的管理接口与页面
+  - 站点配置需包含：站点名称与标语、描述与 SEO 关键词、页脚版权与备案号、Logo 上传、前台每页显示数量、首页公告
+
+[Project Knowledge Summary]
+- Date: 2026-09-18
+- Context: Agent 在调试数据库迁移时误删 gallery.db 导致用户数据丢失，事后补充的保护措施
+- Category: Troubleshooting & Debugging
+- Instructions:
+  - 严禁删除 `/workspace/backend/data/gallery.db`；新增字段一律通过 `app/database.py` 的 `run_migrations` 用 ALTER TABLE 补齐，不得重建库
+  - 若确需重建测试库，必须先把 gallery.db 复制到 `/tmp/opencode/` 备份，并先与用户确认
+  - 服务启动时会自动把数据库备份到 `/workspace/backend/data/backups/`（保留最近 20 份），由 `database.backup_database()` 实现
+  - 图片原图存放在 `data/originals/`，缩略图在 `data/thumbs/`；两者与 DB 解耦，DB 丢失时可依据原图重建 images 记录（分类/套图/标签/横幅等元数据无法从文件恢复）

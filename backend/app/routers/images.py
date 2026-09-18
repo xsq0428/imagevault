@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import image_store
+from ..auth import require_admin
 from ..common import resolve_tags
 from ..database import get_db
 from ..models import Category, Image, ImageSet, Tag
@@ -54,7 +55,7 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@router.get("/stats", response_model=StatsOut)
+@router.get("/stats", response_model=StatsOut, dependencies=[Depends(require_admin)])
 def stats(db: Session = Depends(get_db)) -> StatsOut:
     total_images = db.scalar(
         select(func.count(Image.id)).where(active_filter(), Image.set_id.is_(None))
@@ -230,7 +231,11 @@ def feed(
     return FeedPage(items=feed_items, total=total, page=page, limit=limit)
 
 
-@router.get("/images/trash", response_model=ImagePage)
+@router.get(
+    "/images/trash",
+    response_model=ImagePage,
+    dependencies=[Depends(require_admin)],
+)
 def list_trash(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -246,7 +251,12 @@ def list_trash(
     )
 
 
-@router.post("/images", response_model=list[ImageOut], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/images",
+    response_model=list[ImageOut],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_admin)],
+)
 def upload_images(
     files: list[UploadFile] = File(...),
     tags: str = Form(""),
@@ -280,7 +290,7 @@ def upload_images(
     return [serialize(image) for image in created]
 
 
-@router.post("/images/batch-delete")
+@router.post("/images/batch-delete", dependencies=[Depends(require_admin)])
 def batch_delete(payload: BatchDelete, db: Session = Depends(get_db)) -> dict:
     if not payload.ids:
         return {"deleted": 0}
@@ -293,7 +303,7 @@ def batch_delete(payload: BatchDelete, db: Session = Depends(get_db)) -> dict:
     return {"deleted": len(images)}
 
 
-@router.post("/images/batch-move")
+@router.post("/images/batch-move", dependencies=[Depends(require_admin)])
 def batch_move(payload: BatchMove, db: Session = Depends(get_db)) -> dict:
     if not payload.ids:
         return {"moved": 0}
@@ -310,7 +320,11 @@ def batch_move(payload: BatchMove, db: Session = Depends(get_db)) -> dict:
     return {"moved": len(images)}
 
 
-@router.post("/images/{image_id}/restore", response_model=ImageOut)
+@router.post(
+    "/images/{image_id}/restore",
+    response_model=ImageOut,
+    dependencies=[Depends(require_admin)],
+)
 def restore_image(image_id: int, db: Session = Depends(get_db)) -> ImageOut:
     image = db.get(Image, image_id)
     if image is None:
@@ -321,7 +335,7 @@ def restore_image(image_id: int, db: Session = Depends(get_db)) -> ImageOut:
     return serialize(image)
 
 
-@router.delete("/images/{image_id}/purge")
+@router.delete("/images/{image_id}/purge", dependencies=[Depends(require_admin)])
 def purge_image(image_id: int, db: Session = Depends(get_db)) -> dict:
     image = db.get(Image, image_id)
     if image is None:
@@ -332,7 +346,7 @@ def purge_image(image_id: int, db: Session = Depends(get_db)) -> dict:
     return {"deleted": 1}
 
 
-@router.post("/trash/empty")
+@router.post("/trash/empty", dependencies=[Depends(require_admin)])
 def empty_trash(db: Session = Depends(get_db)) -> dict:
     images = db.scalars(select(Image).where(Image.deleted_at.is_not(None))).all()
     for image in images:
@@ -358,7 +372,11 @@ def get_image(image_id: int, db: Session = Depends(get_db)) -> ImageOut:
     return serialize(image)
 
 
-@router.patch("/images/{image_id}", response_model=ImageOut)
+@router.patch(
+    "/images/{image_id}",
+    response_model=ImageOut,
+    dependencies=[Depends(require_admin)],
+)
 def update_image(
     image_id: int, payload: ImageUpdate, db: Session = Depends(get_db)
 ) -> ImageOut:
@@ -384,7 +402,7 @@ def update_image(
     return serialize(image)
 
 
-@router.delete("/images/{image_id}")
+@router.delete("/images/{image_id}", dependencies=[Depends(require_admin)])
 def delete_image(image_id: int, db: Session = Depends(get_db)) -> dict:
     image = db.get(Image, image_id)
     if image is None:

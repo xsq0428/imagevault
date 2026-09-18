@@ -4,8 +4,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .. import image_store
+from ..auth import optional_admin, require_admin
 from ..database import get_db
-from ..models import Banner
+from ..models import AdminUser, Banner
 from ..schemas import BannerOut, BannerUpdate
 
 router = APIRouter(prefix="/api", tags=["banners"])
@@ -29,8 +30,14 @@ def serialize(banner: Banner) -> BannerOut:
 
 @router.get("/banners", response_model=list[BannerOut])
 def list_banners(
-    include_inactive: bool = False, db: Session = Depends(get_db)
+    include_inactive: bool = False,
+    admin: AdminUser | None = Depends(optional_admin),
+    db: Session = Depends(get_db),
 ) -> list[BannerOut]:
+    if include_inactive and admin is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="请先登录"
+        )
     stmt = select(Banner)
     if not include_inactive:
         stmt = stmt.where(Banner.is_active.is_(True))
@@ -38,7 +45,12 @@ def list_banners(
     return [serialize(banner) for banner in banners]
 
 
-@router.post("/banners", response_model=list[BannerOut], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/banners",
+    response_model=list[BannerOut],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_admin)],
+)
 def upload_banners(
     files: list[UploadFile] = File(...),
     title: str = Form(""),
@@ -69,7 +81,11 @@ def upload_banners(
     return [serialize(banner) for banner in created]
 
 
-@router.patch("/banners/{banner_id}", response_model=BannerOut)
+@router.patch(
+    "/banners/{banner_id}",
+    response_model=BannerOut,
+    dependencies=[Depends(require_admin)],
+)
 def update_banner(
     banner_id: int, payload: BannerUpdate, db: Session = Depends(get_db)
 ) -> BannerOut:
@@ -91,7 +107,7 @@ def update_banner(
     return serialize(banner)
 
 
-@router.delete("/banners/{banner_id}")
+@router.delete("/banners/{banner_id}", dependencies=[Depends(require_admin)])
 def delete_banner(banner_id: int, db: Session = Depends(get_db)) -> dict:
     banner = db.get(Banner, banner_id)
     if banner is None:
