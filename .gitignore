@@ -174,3 +174,8 @@
 *.lz
 *.lzma
 *.iso
+
+# Project runtime data (uploaded originals, thumbnails, SQLite)
+backend/data/
+frontend/dist/
+
